@@ -1,0 +1,155 @@
+{
+  "pipelineSpec": {
+    "components": {
+      "comp-hello-op": {
+        "executorLabel": "exec-hello-op",
+        "inputDefinitions": {
+          "parameters": {
+            "hello_str": {
+              "type": "STRING"
+            }
+          }
+        },
+        "outputDefinitions": {
+          "parameters": {
+            "Output": {
+              "type": "STRING"
+            }
+          }
+        }
+      },
+      "comp-world-op": {
+        "executorLabel": "exec-world-op",
+        "inputDefinitions": {
+          "parameters": {
+            "hello_str": {
+              "type": "STRING"
+            }
+          }
+        },
+        "outputDefinitions": {
+          "parameters": {
+            "Output": {
+              "type": "STRING"
+            }
+          }
+        }
+      }
+    },
+    "deploymentSpec": {
+      "executors": {
+        "exec-hello-op": {
+          "container": {
+            "args": [
+              "--executor_input",
+              "{{$}}",
+              "--function_to_execute",
+              "hello_op"
+            ],
+            "command": [
+              "sh",
+              "-c",
+              "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location 'kfp==1.8.19' && \"$0\" \"$@\"\n",
+              "sh",
+              "-ec",
+              "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+              "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef hello_op(\n    hello_str: str,\n) -> str:\n    return hello_str\n\n"
+            ],
+            "image": "python:3.10",
+            "resources": {
+              "cpuLimit": 1.0,
+              "memoryLimit": 1.0
+            }
+          }
+        },
+        "exec-world-op": {
+          "container": {
+            "args": [
+              "--executor_input",
+              "{{$}}",
+              "--function_to_execute",
+              "world_op"
+            ],
+            "command": [
+              "sh",
+              "-c",
+              "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location 'kfp==1.8.19' && \"$0\" \"$@\"\n",
+              "sh",
+              "-ec",
+              "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+              "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef world_op(\n    hello_str: str,\n) -> str:\n    return hello_str + \", world!\"\n\n"
+            ],
+            "image": "python:3.10",
+            "resources": {
+              "cpuLimit": 1.0,
+              "memoryLimit": 1.0
+            }
+          }
+        }
+      }
+    },
+    "pipelineInfo": {
+      "name": "hello-world-kubeflow-pipeline"
+    },
+    "root": {
+      "dag": {
+        "tasks": {
+          "hello-op": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-hello-op"
+            },
+            "inputs": {
+              "parameters": {
+                "hello_str": {
+                  "componentInputParameter": "hello_str"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "hello-op"
+            }
+          },
+          "world-op": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-world-op"
+            },
+            "dependentTasks": [
+              "hello-op"
+            ],
+            "inputs": {
+              "parameters": {
+                "hello_str": {
+                  "taskOutputParameter": {
+                    "outputParameterKey": "Output",
+                    "producerTask": "hello-op"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "world-op"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "parameters": {
+          "hello_str": {
+            "type": "STRING"
+          }
+        }
+      }
+    },
+    "schemaVersion": "2.0.0",
+    "sdkVersion": "kfp-1.8.19"
+  },
+  "runtimeConfig": {
+    "gcsOutputDirectory": "gs://my-vertex-playground-bucket/hello-world-kubeflow-pipeline/"
+  }
+}

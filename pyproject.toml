@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "hello-kubeflow"
+version = "0.1.0"
+description = ""
+authors = ["sradc <sidneyradcliffe@sky.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+kfp = "^1.8.19"
+google-cloud-aiplatform = "^1.22.1"
+
+[tool.poetry.dev-dependencies]
+ipykernel = "^6.21.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
