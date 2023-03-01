@@ -1,50 +1,19 @@
 {
   "pipelineSpec": {
     "components": {
-      "comp-hello-op": {
-        "executorLabel": "exec-hello-op",
-        "inputDefinitions": {
-          "parameters": {
-            "hello_str": {
-              "type": "STRING"
-            }
-          }
-        },
-        "outputDefinitions": {
-          "parameters": {
-            "Output": {
-              "type": "STRING"
-            }
-          }
-        }
-      },
-      "comp-world-op": {
-        "executorLabel": "exec-world-op",
-        "inputDefinitions": {
-          "parameters": {
-            "hello_str": {
-              "type": "STRING"
-            }
-          }
-        },
-        "outputDefinitions": {
-          "parameters": {
-            "Output": {
-              "type": "STRING"
-            }
-          }
-        }
+      "comp-main": {
+        "executorLabel": "exec-main"
       }
     },
     "deploymentSpec": {
       "executors": {
-        "exec-hello-op": {
+        "exec-main": {
           "container": {
             "args": [
               "--executor_input",
               "{{$}}",
               "--function_to_execute",
-              "hello_op"
+              "main"
             ],
             "command": [
               "sh",
@@ -53,95 +22,35 @@
               "sh",
               "-ec",
               "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-              "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef hello_op(\n    hello_str: str,\n) -> str:\n    return hello_str\n\n"
+              "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef main():\n    import torch\n\n    print(torch.__version__)\n    print(torch.cuda.is_available())\n    print(torch.cuda.get_device_name(0))\n    print(torch.cuda.device_count())\n    print(torch.cuda.current_device())\n\n"
             ],
-            "image": "python:3.10",
+            "image": "gcr.io/deeplearning-platform-release/pytorch-gpu.1-13:latest",
             "resources": {
-              "cpuLimit": 1.0,
-              "memoryLimit": 1.0
-            }
-          }
-        },
-        "exec-world-op": {
-          "container": {
-            "args": [
-              "--executor_input",
-              "{{$}}",
-              "--function_to_execute",
-              "world_op"
-            ],
-            "command": [
-              "sh",
-              "-c",
-              "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet     --no-warn-script-location 'kfp==1.8.19' && \"$0\" \"$@\"\n",
-              "sh",
-              "-ec",
-              "program_path=$(mktemp -d)\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\npython3 -m kfp.v2.components.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-              "\nimport kfp\nfrom kfp.v2 import dsl\nfrom kfp.v2.dsl import *\nfrom typing import *\n\ndef world_op(\n    hello_str: str,\n) -> str:\n    return hello_str + \", world!\"\n\n"
-            ],
-            "image": "python:3.10",
-            "resources": {
-              "cpuLimit": 1.0,
-              "memoryLimit": 1.0
+              "accelerator": {
+                "count": "1",
+                "type": "NVIDIA_TESLA_T4"
+              }
             }
           }
         }
       }
     },
     "pipelineInfo": {
-      "name": "hello-world-kubeflow-pipeline"
+      "name": "hello-world-pipeline-pytorch"
     },
     "root": {
       "dag": {
         "tasks": {
-          "hello-op": {
+          "main": {
             "cachingOptions": {
               "enableCache": true
             },
             "componentRef": {
-              "name": "comp-hello-op"
-            },
-            "inputs": {
-              "parameters": {
-                "hello_str": {
-                  "componentInputParameter": "hello_str"
-                }
-              }
+              "name": "comp-main"
             },
             "taskInfo": {
-              "name": "hello-op"
+              "name": "main"
             }
-          },
-          "world-op": {
-            "cachingOptions": {
-              "enableCache": true
-            },
-            "componentRef": {
-              "name": "comp-world-op"
-            },
-            "dependentTasks": [
-              "hello-op"
-            ],
-            "inputs": {
-              "parameters": {
-                "hello_str": {
-                  "taskOutputParameter": {
-                    "outputParameterKey": "Output",
-                    "producerTask": "hello-op"
-                  }
-                }
-              }
-            },
-            "taskInfo": {
-              "name": "world-op"
-            }
-          }
-        }
-      },
-      "inputDefinitions": {
-        "parameters": {
-          "hello_str": {
-            "type": "STRING"
           }
         }
       }
@@ -150,6 +59,6 @@
     "sdkVersion": "kfp-1.8.19"
   },
   "runtimeConfig": {
-    "gcsOutputDirectory": "gs://my-vertex-playground-bucket/hello-world-kubeflow-pipeline/"
+    "gcsOutputDirectory": "gs://my-vertex-playground-bucket/hello-world-pipeline-pytorch/"
   }
 }
